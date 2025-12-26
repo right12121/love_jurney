@@ -1,72 +1,121 @@
 import { MemoryItem } from '../types';
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, query, orderBy } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-const DB_NAME = 'LoveJourneyDB';
-const STORE_NAME = 'memories';
-const DB_VERSION = 1;
+const firebaseConfig = {
+  apiKey: "AIzaSyDRhFmbJcLV_1RvKEiRW2dd-vJ_m3iOJHE",
+  authDomain: "love-jurney.firebaseapp.com",
+  projectId: "love-jurney",
+  storageBucket: "love-jurney.firebasestorage.app",
+  messagingSenderId: "834192849016",
+  appId: "1:834192849016:web:a27bdbcb1580392259158d",
+  measurementId: "G-MQYB82EYJJ"
+};
 
-// Helper to open DB
-const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-      }
-    };
+// Initialize Firebase
+let db: any;
+let storage: any;
+let isConfigured = false;
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  storage = getStorage(app);
+  isConfigured = true;
+} catch (e) {
+  console.error("Firebase init failed:", e);
+}
+
+const COLLECTION_NAME = "memories";
+
+// Helper: Convert Base64 to Blob for upload
+const base64ToBlob = async (base64: string): Promise<Blob> => {
+  const res = await fetch(base64);
+  return await res.blob();
 };
 
 export const storageService = {
   getAll: async (): Promise<MemoryItem[]> => {
-    try {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
-        
-        request.onsuccess = () => {
-          const results = request.result || [];
-          // Sort by date descending
-          const sorted = results.sort((a: MemoryItem, b: MemoryItem) => 
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-          resolve(sorted);
-        };
-        request.onerror = () => reject(request.error);
-      });
-    } catch (error) {
-      console.error("Database Error:", error);
+    if (!isConfigured) {
+      console.warn("Firebase not configured properly.");
       return [];
+    }
+
+    try {
+      const q = query(collection(db, COLLECTION_NAME), orderBy("date", "desc"));
+      const querySnapshot = await getDocs(q);
+      const items: MemoryItem[] = [];
+      querySnapshot.forEach((doc) => {
+        items.push(doc.data() as MemoryItem);
+      });
+      return items;
+    } catch (error) {
+      console.error("Error getting documents: ", error);
+      throw error;
     }
   },
 
   add: async (item: MemoryItem): Promise<void> => {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.put(item); // put = insert or update
+    if (!isConfigured) throw new Error("Firebase not configured!");
+
+    try {
+      // 1. Upload Images to Firebase Storage
+      // The item.rawAssets.images currently contains Base64 strings.
+      // We want to upload them and get Cloud URLs.
+      const cloudImageUrls: string[] = [];
       
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+      for (let i = 0; i < item.rawAssets.images.length; i++) {
+        const base64 = item.rawAssets.images[i];
+        const blob = await base64ToBlob(base64);
+        const fileName = `${item.id}_${i}_${Date.now()}.jpg`;
+        const storageRef = ref(storage, `images/${fileName}`);
+        
+        await uploadBytes(storageRef, blob);
+        const downloadURL = await getDownloadURL(storageRef);
+        cloudImageUrls.push(downloadURL);
+      }
+
+      // 2. Replace Base64 in HTML with Cloud URLs
+      // The generated HTML has the Base64 strings embedded. We need to swap them out
+      // to reduce the document size and allow others to load images faster.
+      let optimizedHtml = item.generatedHtml;
+      
+      // We iterate through the original Base64 list and replace occurrences in HTML with the new Cloud URL
+      item.rawAssets.images.forEach((base64, index) => {
+        // Simple string replacement. 
+        // Note: This relies on the fact that `generateSmartCanvas` embedded the exact base64 string.
+        // If the HTML is huge, this might be slow, but for <10 images it's fine.
+        // We use split/join to replace all occurrences.
+        optimizedHtml = optimizedHtml.split(base64).join(cloudImageUrls[index]);
+      });
+
+      // 3. Construct the Final Object
+      const cloudItem: MemoryItem = {
+        ...item,
+        rawAssets: {
+          ...item.rawAssets,
+          images: cloudImageUrls // Save Cloud URLs instead of Base64
+        },
+        generatedHtml: optimizedHtml
+      };
+
+      // 4. Save to Firestore
+      await setDoc(doc(db, COLLECTION_NAME, item.id), cloudItem);
+
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      throw error;
+    }
   },
 
   delete: async (id: string): Promise<void> => {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.delete(id);
-      
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    if (!isConfigured) return;
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (error) {
+      console.error("Error deleting document: ", error);
+      throw error;
+    }
   }
 };
