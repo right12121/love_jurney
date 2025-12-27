@@ -12,15 +12,21 @@ export default defineConfig(({ mode }) => {
       // Expose the API_KEY to the client
       'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY)
     },
+    // 1. Force esbuild to compile to esnext
     esbuild: {
-      supported: {
-        'top-level-await': true // Browsers can handle top-level-await features
-      },
+      target: 'esnext'
     },
+    // 2. Force dependency optimization to use esnext (this handles node_modules like pdfjs-dist)
+    optimizeDeps: {
+      esbuildOptions: {
+        target: 'esnext'
+      }
+    },
+    // 3. Force final production build to use esnext
     build: {
       outDir: 'dist',
       sourcemap: false,
-      target: 'esnext' // Allow top-level await which is used by pdfjs-dist
+      target: 'esnext' 
     }
   };
 });
