@@ -1,10 +1,20 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure the worker to point to the CDN
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs`;
+// We do NOT set the workerSrc at the top level anymore.
+// This prevents the app from crashing on load if there is a version mismatch 
+// between the installed pdfjs-dist and the CDN worker.
 
 export async function extractTextFromPdf(file: File): Promise<string> {
   try {
+    // Dynamically configure the worker only when needed.
+    // Ideally, the version number in the URL should match your package.json version.
+    // If you encounter version errors, ensure the CDN version matches `pdfjsLib.version`.
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+       // Fallback to a generally compatible version or use the library's version if possible
+       const version = pdfjsLib.version || '4.0.379';
+       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
@@ -25,6 +35,7 @@ export async function extractTextFromPdf(file: File): Promise<string> {
     return fullText.trim();
   } catch (error) {
     console.error('Error extracting text from PDF:', error);
-    throw new Error('Failed to parse PDF file.');
+    // Return a friendly error string instead of crashing
+    return "Error reading PDF. Please try copying the text manually.";
   }
 }
