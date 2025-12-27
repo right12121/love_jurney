@@ -1,5 +1,5 @@
 import { MemoryItem } from '../types';
-import * as firebaseApp from "firebase/app";
+import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -19,11 +19,7 @@ let storage: any;
 let isConfigured = false;
 
 try {
-  // Use namespace import and cast to any to handle potential type definition mismatches
-  // where initializeApp might not be recognized as an exported member.
-  const initializeApp = (firebaseApp as any).initializeApp;
   const app = initializeApp(firebaseConfig);
-  
   db = getFirestore(app);
   storage = getStorage(app);
   isConfigured = true;
@@ -65,8 +61,6 @@ export const storageService = {
 
     try {
       // 1. Upload Images to Firebase Storage
-      // The item.rawAssets.images currently contains Base64 strings.
-      // We want to upload them and get Cloud URLs.
       const cloudImageUrls: string[] = [];
       
       for (let i = 0; i < item.rawAssets.images.length; i++) {
@@ -81,16 +75,8 @@ export const storageService = {
       }
 
       // 2. Replace Base64 in HTML with Cloud URLs
-      // The generated HTML has the Base64 strings embedded. We need to swap them out
-      // to reduce the document size and allow others to load images faster.
       let optimizedHtml = item.generatedHtml;
-      
-      // We iterate through the original Base64 list and replace occurrences in HTML with the new Cloud URL
       item.rawAssets.images.forEach((base64, index) => {
-        // Simple string replacement. 
-        // Note: This relies on the fact that `generateSmartCanvas` embedded the exact base64 string.
-        // If the HTML is huge, this might be slow, but for <10 images it's fine.
-        // We use split/join to replace all occurrences.
         optimizedHtml = optimizedHtml.split(base64).join(cloudImageUrls[index]);
       });
 
@@ -99,7 +85,7 @@ export const storageService = {
         ...item,
         rawAssets: {
           ...item.rawAssets,
-          images: cloudImageUrls // Save Cloud URLs instead of Base64
+          images: cloudImageUrls 
         },
         generatedHtml: optimizedHtml
       };

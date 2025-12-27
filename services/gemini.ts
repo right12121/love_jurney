@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const SYSTEM_INSTRUCTION = `
 You are a world-class Frontend Designer and Creative Coder. 
 Your task is to take user-provided text and images, and generate a SINGLE, self-contained HTML snippet that beautifully displays them.
@@ -25,12 +23,22 @@ CONSTRAINTS & REQUIREMENTS:
 GOAL: Create a "micro-site" that feels like a precious memory card.
 `;
 
+// Lazy initialization function
+const getAiClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please configure it in your environment.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
 export async function generateSmartCanvas(
   text: string, 
   images: string[], 
   userPrompt?: string
 ): Promise<string> {
   try {
+    const ai = getAiClient();
     const parts: any[] = [];
 
     // Add text prompt with explicit inventory of images
@@ -105,6 +113,7 @@ export async function generateSmartCanvas(
 
   } catch (error) {
     console.error("Gemini Generation Error:", error);
-    throw new Error("Failed to generate memory canvas.");
+    // Don't crash the whole app, just rethrow for the UI to handle
+    throw error;
   }
 }
