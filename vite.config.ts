@@ -12,6 +12,11 @@ export default defineConfig(({ mode }) => {
       // Expose the API_KEY to the client
       'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY)
     },
+    esbuild: {
+      supported: {
+        'top-level-await': true // Browsers can handle top-level-await features
+      },
+    },
     build: {
       outDir: 'dist',
       sourcemap: false,

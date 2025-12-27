@@ -1,5 +1,5 @@
 import { MemoryItem } from '../types';
-import { initializeApp } from "firebase/app";
+import * as firebaseApp from "firebase/app";
 import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -19,8 +19,8 @@ let storage: any;
 let isConfigured = false;
 
 try {
-  // Fix: Use named import for initializeApp
-  const app = initializeApp(firebaseConfig);
+  // Use namespace import to avoid "no exported member" error
+  const app = firebaseApp.initializeApp(firebaseConfig);
   db = getFirestore(app);
   storage = getStorage(app);
   isConfigured = true;
