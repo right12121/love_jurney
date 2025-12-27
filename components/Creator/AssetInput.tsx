@@ -52,7 +52,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({ text, setText, images, s
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setIsProcessingImages(true);
-      const files = Array.from(e.target.files);
+      const files = Array.from(e.target.files) as File[];
       
       try {
         const promises = files.map(file => resizeImage(file));
