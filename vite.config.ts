@@ -7,6 +7,10 @@ export default defineConfig(({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, (process as any).cwd(), '');
   return {
+    // USE RELATIVE PATHS: This allows the app to work on GitHub Pages 
+    // (e.g. username.github.io/repo-name/) or any sub-folder.
+    base: './', 
+    
     plugins: [react()],
     define: {
       // Expose the API_KEY to the client
