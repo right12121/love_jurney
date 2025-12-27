@@ -3,32 +3,26 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-// ------------------------------------------------------------------
-// TODO: PASTE YOUR FIREBASE CONFIGURATION HERE
-// Go to Firebase Console -> Project Settings -> General -> Your apps
-// ------------------------------------------------------------------
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
+  apiKey: "AIzaSyDRhFmbJcLV_1RvKEiRW2dd-vJ_m3iOJHE",
+  authDomain: "love-jurney.firebaseapp.com",
+  projectId: "love-jurney",
+  storageBucket: "love-jurney.firebasestorage.app",
+  messagingSenderId: "834192849016",
+  appId: "1:834192849016:web:a27bdbcb1580392259158d",
+  measurementId: "G-MQYB82EYJJ"
 };
 
 // Initialize Firebase
-// We use a try-catch to handle the case where the user hasn't configured it yet.
 let db: any;
 let storage: any;
 let isConfigured = false;
 
 try {
-  if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    storage = getStorage(app);
-    isConfigured = true;
-  }
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  storage = getStorage(app);
+  isConfigured = true;
 } catch (e) {
   console.error("Firebase init failed:", e);
 }
@@ -44,7 +38,7 @@ const base64ToBlob = async (base64: string): Promise<Blob> => {
 export const storageService = {
   getAll: async (): Promise<MemoryItem[]> => {
     if (!isConfigured) {
-      console.warn("Firebase not configured. Returning empty list.");
+      console.warn("Firebase not configured properly.");
       return [];
     }
 
@@ -63,7 +57,7 @@ export const storageService = {
   },
 
   add: async (item: MemoryItem): Promise<void> => {
-    if (!isConfigured) throw new Error("Please configure Firebase in services/storage.ts first!");
+    if (!isConfigured) throw new Error("Firebase not configured!");
 
     try {
       // 1. Upload Images to Firebase Storage
