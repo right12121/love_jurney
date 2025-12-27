@@ -59,7 +59,7 @@ export async function generateSmartCanvas(
     });
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.7, // Creativity
